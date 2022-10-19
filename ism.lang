@@ -5,11 +5,11 @@ tokens {
 	string <- `'` (unicode_any - `'`)* `'`;
 	kwd <= `prop` | `class` | `func` | `var`;
 
-	ws <= (` ` | `\t` | `\r` | `\f`);
+	ws <= (` ` | `\t` | `\r` | `\f` | `\n`);
 	digit <= `0`..`9`;
 	alpha <= `a`..`z` | `A`..`Z` | `_`;
 
-	top <= kwd | id | int | float | string | `[` | `]` | `=` | `,` | `;` | `\n`;
+	top <= kwd | id | int | float | string | `[` | `]` | `=` | `,` | `;`;
 }
 
 lexer {
@@ -37,8 +37,8 @@ parser {
 
 	prop { name_strict; }
 
-	Program.Single[I] <- x:Stmt;
-	Program.Multiple <- x:Program[I] _ delim:(sc:`;` | nl:`\n`) _ y:Program;
+	Program.Single[I] <- x:Stmt `;`;
+	Program.Multiple <- y:Program _ x:Program[I];
 
 	Stmt.Expr <- x:Expr;
 	Stmt.Decl <- x:Decl;
@@ -63,12 +63,12 @@ parser {
 }
 
 test {
-	`foo[x]` <<>>;
-	`foo[1]` <<>>;
-	`[123]` <<>>;
-	`[a = 1, b = 2]`;
-	`x = [ test = 1.23 ]` <<>>;
-	`var env = [USER = '', HOSTNAME = '']` <<>>;
-	`var a = 1; var b = 2` <<>>;
-	`var x = func[a] []` <<>>;
+	`foo[x];` <<>>;
+	`foo[1];` <<>>;
+	`[123];` <<>>;
+	`[a = 1, b = 2];`;
+	`x = [ test = 1.23 ];` <<>>;
+	`var env = [USER = '', HOSTNAME = ''];` <<>>;
+	`var a = 1; var b = 2;` <<>>;
+	`var x = func[a] [];` <<>>;
 }
