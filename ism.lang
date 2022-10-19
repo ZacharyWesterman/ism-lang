@@ -1,0 +1,74 @@
+tokens {
+	id <- alpha (alpha | digit)* - kwd;
+	int <- digit+;
+	float <- digit* `.` digit+;
+	string <- `'` (unicode_any - `'`)* `'`;
+	kwd <= `prop` | `class` | `func` | `var`;
+
+	ws <= (` ` | `\t` | `\r` | `\f`);
+	digit <= `0`..`9`;
+	alpha <= `a`..`z` | `A`..`Z` | `_`;
+
+	top <= kwd | id | int | float | string | `[` | `]` | `=` | `,` | `;` | `\n`;
+}
+
+lexer {
+	main { body }
+
+	mode body {
+		top => { emit; }
+		ws => { pass; }
+		eof => { pop; }
+	}
+}
+
+parser {
+	main { Program }
+
+	prec {
+		FuncSig prefix;
+		FuncDef;
+		Expr.AnonFunc prefix;
+		Expr.FuncCall prefix;
+		Expr.List assoc_left;
+		Expr.Assign assoc_left;
+		Expr.Id Expr.Literal Expr.Paren;
+	}
+
+	prop { name_strict; }
+
+	Program.Single[I] <- x:Stmt;
+	Program.Multiple <- x:Program[I] _ delim:(sc:`;` | nl:`\n`) _ y:Program;
+
+	Stmt.Expr <- x:Expr;
+	Stmt.Decl <- x:Decl;
+
+	Literal.Int_ <- val:int;
+	Literal.Float_ <- val:float;
+	Literal.String <- val:#L[string::+_];
+
+	Expr.AnonFunc <- sig:FuncSig _ `[` stmts:Program? `]`;
+	Expr.FuncCall <- name:id `[` params:Expr[pr=*] `]`;
+	Expr.Id[I] <- name:id;
+	Expr.Literal <- val:Literal;
+	Expr.List <- x:Expr `,` _ y:Expr;
+	Expr.Assign[A] <- x:Expr[I] _ `=` _ y:Expr;
+	Expr.Paren <- `[` x:Expr[pr=*] `]`;
+
+	FuncDef <- sig:FuncSig _ name:id _ `=` _ `[` stmts:Program? `]`;
+	FuncSig <- `func` _ `[` params:Expr `]`;
+
+	Decl.Var <- `var` _ expr:Expr[A];
+	Decl.Func <- x:FuncDef;
+}
+
+test {
+	`foo[x]` <<>>;
+	`foo[1]` <<>>;
+	`[123]` <<>>;
+	`[a = 1, b = 2]`;
+	`x = [ test = 1.23 ]` <<>>;
+	`var env = [USER = '', HOSTNAME = '']` <<>>;
+	`var a = 1; var b = 2` <<>>;
+	`var x = func[a] []` <<>>;
+}
