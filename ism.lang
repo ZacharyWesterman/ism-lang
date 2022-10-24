@@ -9,7 +9,10 @@ tokens {
 	digit <= `0`..`9`;
 	alpha <= `a`..`z` | `A`..`Z` | `_`;
 
-	top <= kwd | id | int | float | string | `[` | `]` | `=` | `,` | `;`;
+	cpp_sep <= `\`\`\``;
+	cpp_block <- cpp_sep `cpp` (unicode_any* - cpp_sep) cpp_sep;
+
+	top <= cpp_block | kwd | id | int | float | string | `[` | `]` | `=` | `,` | `;`;
 }
 
 lexer {
@@ -35,6 +38,7 @@ parser {
 
 	Program <- stmts:Stmt+;
 
+	Stmt.CPP <- x:cpp_block;
 	Stmt.Decl <- x:Decl;
 	Stmt.Expr <- x:Expr `;`;
 	Stmt.Null <- `;`;
@@ -72,4 +76,5 @@ test {
 	`var env = [USER = '', HOSTNAME = ''];` <<>>;
 	`var a = 1; var b = 2;` <<>>;
 	`func[var a = 1] x [];` <<>>;
+	`\`\`\`cpp test\`\`\`` <<>>;
 }
