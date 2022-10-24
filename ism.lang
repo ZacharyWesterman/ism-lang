@@ -42,7 +42,6 @@ parser {
 
 	Program <- stmts:Stmt+;
 
-	Stmt.CPP <- x:cpp_block;
 	Stmt.Decl <- x:Decl;
 	Stmt.Expr <- x:Expr `;`;
 	Stmt.Null <- `;`;
@@ -77,6 +76,7 @@ parser {
 	Decl.Var <- type:Signature[V] `;`;
 	Decl.Func <- type:Signature[F] _ `=` _ expr:Expr[pr=*] `;`;
 	Decl.ExprFunc <- type:Signature[F] _ scope:Scope;
+	Decl.CPP <- cpp:cpp_block;
 }
 
 test {
