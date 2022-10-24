@@ -17,6 +17,7 @@ ism: ism_main.cpp gen/ism__gen.hpp
 
 gen/ism__gen.hpp: ism.lang
 	langcc -h $< gen
+	./clean_debug.py
 
 clean:
 	rm -rf build gen ism
