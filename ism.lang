@@ -3,7 +3,7 @@ tokens {
 	int <- digit+;
 	float <- digit* `.` digit+;
 	string <- `'` (unicode_any - `'`)* `'`;
-	kwd <= `prop` | `class` | `func` | `var`;
+	kwd <= `prop` | `class` | `func` | `var` | `int` | `float` | `string`;
 
 	ws <= (` ` | `\t` | `\r` | `\f` | `\n`);
 	digit <= `0`..`9`;
@@ -26,49 +26,50 @@ parser {
 	main { Program }
 
 	prec {
-		FuncSig prefix;
-		FuncDef;
-		Expr.AnonFunc prefix;
-		Expr.FuncCall prefix;
-		Expr.List assoc_left;
 		Expr.Assign assoc_left;
-		Expr.Id Expr.Literal Expr.Paren;
+		Expr.Literal Expr.Id Expr.Paren;
+		Expr.FuncCall prefix;
 	}
 
 	prop { name_strict; }
 
-	Program.Single[I] <- x:Stmt `;`;
-	Program.Multiple <- y:Program _ x:Program[I];
+	Program <- stmts:Stmt+;
 
-	Stmt.Expr <- x:Expr;
 	Stmt.Decl <- x:Decl;
+	Stmt.Expr <- x:Expr `;`;
+	Stmt.Null <- `;`;
 
 	Literal.Int_ <- val:int;
 	Literal.Float_ <- val:float;
 	Literal.String <- val:#L[string::+_];
 
-	Expr.AnonFunc <- sig:FuncSig _ `[` stmts:Program? `]`;
-	Expr.FuncCall <- name:id `[` params:Expr[pr=*] `]`;
+	Expr.FuncCall <- name:id `[` params:#L[Expr[pr=*]::`,`:?] `]`;
 	Expr.Id[I] <- name:id;
 	Expr.Literal <- val:Literal;
-	Expr.List <- x:Expr `,` _ y:Expr;
 	Expr.Assign[A] <- x:Expr[I] _ `=` _ y:Expr;
-	Expr.Paren <- `[` x:Expr[pr=*] `]`;
+	Expr.Paren <- `[` elems:#L[Expr[pr=*]::`,`:?] `]`;
 
-	FuncDef <- sig:FuncSig _ name:id _ `=` _ `[` stmts:Program? `]`;
-	FuncSig <- `func` _ `[` params:Expr `]`;
+	DataType.Literal <- type:(INT:`int` | FLOAT:`float` | STRING:`string`);
+	DataType.Var <- `var`;
 
-	Decl.Var <- `var` _ expr:Expr[A];
-	Decl.Func <- x:FuncDef;
+	Signature.Var[V] <- type:DataType _ name:id _ assgt:(`=` _ expr:Expr[pr=*])?;
+	Signature.Func[F] <- `func` `[` params:#L[Signature[pr=*]::`,`:?] `]` _ name:id;
+
+	Decl.Var <- type:Signature[V] `;`;
+	Decl.Func1 <- type:Signature[F] _ `=` _ expr:Expr[pr=*] `;`;
+	Decl.Func2 <- type:Signature[F] _ `[` stmts:#L[Stmt::`;`:?] `]`;
 }
 
 test {
+	`func[] x [];` <<>>;
 	`foo[x];` <<>>;
 	`foo[1];` <<>>;
 	`[123];` <<>>;
-	`[a = 1, b = 2];`;
+	`func[] x = [];` <<>>;
+	`func[float a, int b] x []` <<>>;
+	`[a = 1, b = 2];` <<>>;
 	`x = [ test = 1.23 ];` <<>>;
 	`var env = [USER = '', HOSTNAME = ''];` <<>>;
 	`var a = 1; var b = 2;` <<>>;
-	`var x = func[a] [];` <<>>;
+	`func[var a = 1] x [];` <<>>;
 }
