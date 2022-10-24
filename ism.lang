@@ -3,7 +3,7 @@ tokens {
 	int <- digit+;
 	float <- digit* `.` digit+;
 	string <- `'` (unicode_any - `'`)* `'`;
-	kwd <= `func` | `var` | `int` | `float` | `string` | `if` | `else` | `elif` | `ret`;
+	kwd <= `func` | `var` | `int` | `float` | `string` | `if` | `else` | `elif` | `ret` | `mut` | `type`;
 
 	ws <= (` ` | `\t` | `\r` | `\f` | `\n`);
 	digit <= `0`..`9`;
@@ -48,6 +48,7 @@ parser {
 	Stmt.Null <- `;`;
 	Stmt.Cond <- begin:Cond[B] middle:Cond[M]* end:Cond[E]?;
 	Stmt.Return <- `ret` _ x:Expr? `;`;
+	Stmt.Typedef <- `type` _ name:id `[` members:Decl* `]`;
 
 	//Conditional statements
 	Cond.If[B] <- `if` _ `[` expr:Expr[pr=*] `]` _ scope:Scope;
@@ -70,8 +71,8 @@ parser {
 	DataType.Literal <- type:(INT:`int` | FLOAT:`float` | STRING:`string`);
 	DataType.Var <- `var`;
 
-	Signature.Var[V] <- type:DataType _ name:id _ assgt:(`=` _ expr:Expr[pr=*])?;
-	Signature.Func[F] <- `func` `[` params:#L[Signature[pr=*]::`,`:?] `]` _ name:id;
+	Signature.Var[V] <- ismut:`mut`? _ type:DataType _ name:id _ assgt:(`=` _ expr:Expr[pr=*])?;
+	Signature.Func[F] <- ismut:`mut`? _ `func` `[` params:#L[Signature[pr=*]::`,`:?] `]` _ name:id;
 
 	Decl.Var <- type:Signature[V] `;`;
 	Decl.Func <- type:Signature[F] _ `=` _ expr:Expr[pr=*] `;`;

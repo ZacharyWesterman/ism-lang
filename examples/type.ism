@@ -1,0 +1,26 @@
+```cpp
+#include <ifstream>
+```
+
+type file
+[
+	```cpp
+	std::ifstream fdata;
+	```
+
+	func[string name] __create
+	[
+		```cpp
+		fdata.open(name);
+		```
+	]
+
+	mut func[] read
+	[
+		```cpp
+		std::string s;
+		fdata >> s;
+		return s;
+		```
+	]
+]
