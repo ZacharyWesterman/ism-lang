@@ -3,7 +3,9 @@ tokens {
 	int <- digit+;
 	float <- digit* `.` digit+;
 	string <- `'` (unicode_any - `'`)* `'`;
-	kwd <= `func` | `var` | `bool` | `int` | `float` | `string` | `if` | `else` | `elif` | `ret` | `mut` | `type` | `raw`;
+
+	datatypes <= `var` | `bool` | `int` | `float` | `string` | `true` | `false`;
+	kwd <= datatypes | `func` | `if` | `else` | `elif` | `ret` | `mut` | `type` | `raw`;
 
 	ws <= (` ` | `\t` | `\r` | `\f` | `\n`);
 	digit <= `0`..`9`;
@@ -41,7 +43,7 @@ parser {
 	main { Program }
 
 	prec {
-		Expr.OperList assoc_left;
+		Expr.BinaryOp assoc_left;
 		Expr.Assign assoc_left;
 		Expr.Literal Expr.Id Expr.Paren;
 		Expr.FuncCall prefix;
@@ -69,13 +71,14 @@ parser {
 	Literal.Int_ <- val:int;
 	Literal.Float_ <- val:float;
 	Literal.String <- val:#L[string::+_];
+	Literal.Boolean <- val:(TRUE:`true` | FALSE:`false`);
 
 	Expr.FuncCall <- name:id `[` params:#L[Expr[pr=*]::`,`:?] `]`;
 	Expr.Id[I] <- name:id;
 	Expr.Literal <- val:Literal;
 	Expr.Assign[A] <- x:Expr[I] _ `=` _ y:Expr;
 	Expr.Paren <- `[` elems:#L[Expr[pr=*]::`,`:?] `]`;
-	Expr.OperList <- x:Expr _ op:id _ y:Expr;
+	Expr.BinaryOp <- x:Expr _ op:id _ y:Expr;
 	Expr.CPP <- cpp:cpp_block;
 
 	DataType.Literal <- type:(BOOL:`bool` | INT:`int` | FLOAT:`float` | STRING:`string`);
