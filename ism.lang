@@ -1,5 +1,5 @@
 tokens {
-	id <- alpha (alpha | digit)* - kwd;
+	id <- (alpha) (alpha | digit | operator)* - kwd;
 	int <- digit+;
 	float <- digit* `.` digit+;
 	string <- `'` (unicode_any - `'`)* `'`;
@@ -7,12 +7,15 @@ tokens {
 
 	ws <= (` ` | `\t` | `\r` | `\f` | `\n`);
 	digit <= `0`..`9`;
-	alpha <= `a`..`z` | `A`..`Z` | `_`;
+	alpha <= unicode_any - (`'` | ws | langstruc | digit | `\`` | operator);
+
+	langstruc <= `[` | `]` | `,` | `;` | `.`;
+	operator <= `=`;
 
 	cpp_sep <= `\`\`\``;
 	cpp_block <- cpp_sep `cpp` (unicode_any* - cpp_sep) cpp_sep;
 
-	top <= cpp_block | kwd | id | int | float | string | `[` | `]` | `=` | `,` | `;`;
+	top <= operator | cpp_block | kwd | id | int | float | string | langstruc;
 }
 
 lexer {
@@ -29,6 +32,7 @@ parser {
 	main { Program }
 
 	prec {
+		Expr.BinaryCall assoc_left;
 		Expr.Assign assoc_left;
 		Expr.Literal Expr.Id Expr.Paren;
 		Expr.FuncCall prefix;
@@ -61,6 +65,7 @@ parser {
 	Expr.Literal <- val:Literal;
 	Expr.Assign[A] <- x:Expr[I] _ `=` _ y:Expr;
 	Expr.Paren <- `[` elems:#L[Expr[pr=*]::`,`:?] `]`;
+	Expr.BinaryCall <- x:Expr _ name:id _ y:Expr;
 
 	DataType.Literal <- type:(INT:`int` | FLOAT:`float` | STRING:`string`);
 	DataType.Var <- `var`;
@@ -74,17 +79,18 @@ parser {
 }
 
 test {
-	//`func[] x []` <<>>;
-	//`foo[x];` <<>>;
-	//`foo[1];` <<>>;
-	//`[123];` <<>>;
-	//`func[] x = [];` <<>>;
-	//`func[float a, int b] x []` <<>>;
-	//`[a = 1, b = 2];` <<>>;
-	//`x = [ test = 1.23 ];` <<>>;
-	//`var env = [USER = '', HOSTNAME = ''];` <<>>;
-	//`var a = 1; var b = 2;` <<>>;
-	//`func[var a = 1] x []` <<>>;
-	//`\`\`\`cpp test\`\`\`` <<>>;
-	//`if [1] []` <<>>;
+	`1 + 1;` <<>>;
+	`func[] x []` <<>>;
+	`foo[x];` <<>>;
+	`foo[1];` <<>>;
+	`[123];` <<>>;
+	`func[] x = [];` <<>>;
+	`func[float a, int b] x []` <<>>;
+	`[a = 1, b = 2];` <<>>;
+	`x = [ test = 1.23 ];` <<>>;
+	`var env = [USER = '', HOSTNAME = ''];` <<>>;
+	`var a = 1; var b = 2;` <<>>;
+	`func[var a = 1] x []` <<>>;
+	`\`\`\`cpp test\`\`\`` <<>>;
+	`if [1] []` <<>>;
 }

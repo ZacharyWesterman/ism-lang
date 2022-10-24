@@ -19,6 +19,6 @@ gen/ism__gen.hpp: ism.lang
 	langcc -h $< gen
 
 clean:
-	rm -rf build gen
+	rm -rf build gen ism
 
 .PHONY: clean
