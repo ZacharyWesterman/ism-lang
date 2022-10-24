@@ -1,2 +1,8 @@
-raw func[int a, int b] + = ```cpp a + b```;
-raw func[int a, int b] - = ```cpp a - b```;
+//integer operators
+//note that there is no precedence, and opers are all left-associative.
+raw func[int a, int b] + = ```cpp a + b```; //addition
+raw func[int a, int b] - = ```cpp a - b```; //subtraction
+raw func[int a, int b] * = ```cpp a * b```; //multiplication
+raw func[int a, int b] / = ```cpp a / b```; //division
+
+var a = 1 + 2 + 3;

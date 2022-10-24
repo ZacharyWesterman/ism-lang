@@ -1,5 +1,5 @@
 tokens {
-	id <- (alpha) (alpha | digit | operator)* - kwd;
+	id <- (alpha) (alpha | digit | operator)* - kwd - (`//` unicode_any*);
 	int <- digit+;
 	float <- digit* `.` digit+;
 	string <- `'` (unicode_any - `'`)* `'`;
@@ -22,9 +22,16 @@ lexer {
 	main { body }
 
 	mode body {
+		`//` => { push comment_single; }
 		top => { emit; }
 		ws => { pass; }
 		eof => { pop; }
+	}
+
+	mode comment_single {
+		`\n` => { pop_extract; }
+		eof => { pop_extract; }
+		_ => { pass; }
 	}
 }
 
@@ -32,7 +39,7 @@ parser {
 	main { Program }
 
 	prec {
-		Expr.BinaryCall assoc_left;
+		Expr.OperList assoc_left;
 		Expr.Assign assoc_left;
 		Expr.Literal Expr.Id Expr.Paren;
 		Expr.FuncCall prefix;
@@ -66,7 +73,7 @@ parser {
 	Expr.Literal <- val:Literal;
 	Expr.Assign[A] <- x:Expr[I] _ `=` _ y:Expr;
 	Expr.Paren <- `[` elems:#L[Expr[pr=*]::`,`:?] `]`;
-	Expr.BinaryCall <- x:Expr _ name:id _ y:Expr;
+	Expr.OperList <- x:Expr _ op:id _ y:Expr;
 	Expr.CPP <- cpp:cpp_block;
 
 	DataType.Literal <- type:(BOOL:`bool` | INT:`int` | FLOAT:`float` | STRING:`string`);
