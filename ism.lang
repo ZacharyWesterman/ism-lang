@@ -3,7 +3,7 @@ tokens {
 	int <- digit+;
 	float <- digit* `.` digit+;
 	string <- `'` (unicode_any - `'`)* `'`;
-	kwd <= `func` | `var` | `int` | `float` | `string` | `if` | `else` | `elif` | `ret` | `mut` | `type`;
+	kwd <= `func` | `var` | `bool` | `int` | `float` | `string` | `if` | `else` | `elif` | `ret` | `mut` | `type` | `raw`;
 
 	ws <= (` ` | `\t` | `\r` | `\f` | `\n`);
 	digit <= `0`..`9`;
@@ -36,6 +36,7 @@ parser {
 		Expr.Assign assoc_left;
 		Expr.Literal Expr.Id Expr.Paren;
 		Expr.FuncCall prefix;
+		Expr.CPP;
 	}
 
 	prop { name_strict; }
@@ -66,17 +67,18 @@ parser {
 	Expr.Assign[A] <- x:Expr[I] _ `=` _ y:Expr;
 	Expr.Paren <- `[` elems:#L[Expr[pr=*]::`,`:?] `]`;
 	Expr.BinaryCall <- x:Expr _ name:id _ y:Expr;
+	Expr.CPP <- cpp:cpp_block;
 
-	DataType.Literal <- type:(INT:`int` | FLOAT:`float` | STRING:`string`);
+	DataType.Literal <- type:(BOOL:`bool` | INT:`int` | FLOAT:`float` | STRING:`string`);
 	DataType.Var <- `var`;
 
 	Signature.Var[V] <- ismut:`mut`? _ type:DataType _ name:id _ assgt:(`=` _ expr:Expr[pr=*])?;
 	Signature.Func[F] <- ismut:`mut`? _ `func` `[` params:#L[Signature[pr=*]::`,`:?] `]` _ name:id;
+	Signature.RawFunc[F] <- `raw` _ `func` `[` params:#L[Signature[pr=*]::`,`:?] `]` _ name:id;
 
 	Decl.Var <- type:Signature[V] `;`;
-	Decl.Func <- type:Signature[F] _ `=` _ expr:Expr[pr=*] `;`;
-	Decl.ExprFunc <- type:Signature[F] _ scope:Scope;
-	Decl.CPP <- cpp:cpp_block;
+	Decl.ExprFunc <- type:Signature[F] _ `=` _ expr:Expr[pr=*] `;`;
+	Decl.Func <- type:Signature[F] _ scope:Scope;
 }
 
 test {
@@ -92,6 +94,6 @@ test {
 	`var env = [USER = '', HOSTNAME = ''];` <<>>;
 	`var a = 1; var b = 2;` <<>>;
 	`func[var a = 1] x []` <<>>;
-	`\`\`\`cpp test\`\`\`` <<>>;
+	`\`\`\`cpp test\`\`\`;` <<>>;
 	`if [1] []` <<>>;
 }

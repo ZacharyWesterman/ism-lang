@@ -1,11 +1,2 @@
-func[int a, int b] +[
-	```cpp
-	return a + b;
-	```
-]
-
-func[int a, int b] -[
-	```cpp
-	return a - b;
-	```
-]
+raw func[int a, int b] + = ```cpp a + b```;
+raw func[int a, int b] - = ```cpp a - b```;
