@@ -3,7 +3,7 @@ tokens {
 	int <- digit+;
 	float <- digit* `.` digit+;
 	string <- `'` (unicode_any - `'`)* `'`;
-	kwd <= `func` | `var` | `int` | `float` | `string` | `if` | `else` | `elif`;
+	kwd <= `func` | `var` | `int` | `float` | `string` | `if` | `else` | `elif` | `ret`;
 
 	ws <= (` ` | `\t` | `\r` | `\f` | `\n`);
 	digit <= `0`..`9`;
@@ -43,13 +43,14 @@ parser {
 	Stmt.Expr <- x:Expr `;`;
 	Stmt.Null <- `;`;
 	Stmt.Cond <- begin:Cond[B] middle:Cond[M]* end:Cond[E]?;
+	Stmt.Return <- `ret` _ x:Expr? `;`;
 
 	//Conditional statements
 	Cond.If[B] <- `if` _ `[` expr:Expr[pr=*] `]` _ scope:Scope;
 	Cond.Elif[M] <- `elif` _ `[` expr:Expr[pr=*] `]` _ scope:Scope;
 	Cond.Else[E] <- `else` _ scope:Scope;
 
-	Scope <- `[` stmts:#L[Stmt::`;`:?] `]`;
+	Scope <- `[` stmts:Stmt[pr=*]* `]`;
 
 	Literal.Int_ <- val:int;
 	Literal.Float_ <- val:float;
@@ -73,17 +74,17 @@ parser {
 }
 
 test {
-	`func[] x [];` <<>>;
-	`foo[x];` <<>>;
-	`foo[1];` <<>>;
-	`[123];` <<>>;
-	`func[] x = [];` <<>>;
-	`func[float a, int b] x []` <<>>;
-	`[a = 1, b = 2];` <<>>;
-	`x = [ test = 1.23 ];` <<>>;
-	`var env = [USER = '', HOSTNAME = ''];` <<>>;
-	`var a = 1; var b = 2;` <<>>;
-	`func[var a = 1] x [];` <<>>;
-	`\`\`\`cpp test\`\`\`` <<>>;
-	`if [1] []` <<>>;
+	//`func[] x []` <<>>;
+	//`foo[x];` <<>>;
+	//`foo[1];` <<>>;
+	//`[123];` <<>>;
+	//`func[] x = [];` <<>>;
+	//`func[float a, int b] x []` <<>>;
+	//`[a = 1, b = 2];` <<>>;
+	//`x = [ test = 1.23 ];` <<>>;
+	//`var env = [USER = '', HOSTNAME = ''];` <<>>;
+	//`var a = 1; var b = 2;` <<>>;
+	//`func[var a = 1] x []` <<>>;
+	//`\`\`\`cpp test\`\`\`` <<>>;
+	//`if [1] []` <<>>;
 }

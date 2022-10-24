@@ -1,0 +1,9 @@
+func[int n] fib [
+	if [1] [
+		ret 1;
+	]
+	else [
+		ret fib[n1];
+	]
+
+]
