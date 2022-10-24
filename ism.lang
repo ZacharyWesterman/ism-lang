@@ -1,5 +1,5 @@
 tokens {
-	id <- (alpha) (alpha | digit | operator)* - kwd - (`//` unicode_any*);
+	id <- (alpha (alpha | digit)* - kwd) | (char1 char2 - `//`) char2* | char1;
 	int <- digit+;
 	float <- digit* `.` digit+;
 	string <- `'` (unicode_any - `'`)* `'`;
@@ -7,7 +7,9 @@ tokens {
 
 	ws <= (` ` | `\t` | `\r` | `\f` | `\n`);
 	digit <= `0`..`9`;
-	alpha <= unicode_any - (`'` | ws | langstruc | digit | `\`` | operator);
+	alpha <= `a`..`z` | `A`..`Z` | `_`;
+	char1 <= unicode_any - (`'` | ws | langstruc | digit | `\`` | operator | alpha | digit);
+	char2 <= unicode_any - (`'` | ws | langstruc | digit | `\`` | alpha | digit);
 
 	langstruc <= `[` | `]` | `,` | `;` | `.`;
 	operator <= `=`;
