@@ -1,0 +1,11 @@
+func[int a, int b] +[
+	```cpp
+	return a + b;
+	```
+]
+
+func[int a, int b] -[
+	```cpp
+	return a - b;
+	```
+]

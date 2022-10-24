@@ -13,7 +13,7 @@ tokens {
 	operator <= `=`;
 
 	cpp_sep <= `\`\`\``;
-	cpp_block <- cpp_sep `cpp` (unicode_any* - cpp_sep) cpp_sep;
+	cpp_block <- cpp_sep `cpp` (unicode_any - `\``)* cpp_sep;
 
 	top <= operator | cpp_block | kwd | id | int | float | string | langstruc;
 }
@@ -74,8 +74,8 @@ parser {
 	Signature.Func[F] <- `func` `[` params:#L[Signature[pr=*]::`,`:?] `]` _ name:id;
 
 	Decl.Var <- type:Signature[V] `;`;
-	Decl.Func1 <- type:Signature[F] _ `=` _ expr:Expr[pr=*] `;`;
-	Decl.Func2 <- type:Signature[F] _ scope:Scope;
+	Decl.Func <- type:Signature[F] _ `=` _ expr:Expr[pr=*] `;`;
+	Decl.ExprFunc <- type:Signature[F] _ scope:Scope;
 }
 
 test {
