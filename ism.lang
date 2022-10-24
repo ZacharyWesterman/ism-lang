@@ -3,7 +3,7 @@ tokens {
 	int <- digit+;
 	float <- digit* `.` digit+;
 	string <- `'` (unicode_any - `'`)* `'`;
-	kwd <= `prop` | `class` | `func` | `var` | `int` | `float` | `string`;
+	kwd <= `func` | `var` | `int` | `float` | `string` | `if` | `else` | `elif`;
 
 	ws <= (` ` | `\t` | `\r` | `\f` | `\n`);
 	digit <= `0`..`9`;
@@ -42,6 +42,14 @@ parser {
 	Stmt.Decl <- x:Decl;
 	Stmt.Expr <- x:Expr `;`;
 	Stmt.Null <- `;`;
+	Stmt.Cond <- begin:Cond[B] middle:Cond[M]* end:Cond[E]?;
+
+	//Conditional statements
+	Cond.If[B] <- `if` _ `[` expr:Expr[pr=*] `]` _ scope:Scope;
+	Cond.Elif[M] <- `elif` _ `[` expr:Expr[pr=*] `]` _ scope:Scope;
+	Cond.Else[E] <- `else` _ scope:Scope;
+
+	Scope <- `[` stmts:#L[Stmt::`;`:?] `]`;
 
 	Literal.Int_ <- val:int;
 	Literal.Float_ <- val:float;
@@ -61,7 +69,7 @@ parser {
 
 	Decl.Var <- type:Signature[V] `;`;
 	Decl.Func1 <- type:Signature[F] _ `=` _ expr:Expr[pr=*] `;`;
-	Decl.Func2 <- type:Signature[F] _ `[` stmts:#L[Stmt::`;`:?] `]`;
+	Decl.Func2 <- type:Signature[F] _ scope:Scope;
 }
 
 test {
@@ -77,4 +85,5 @@ test {
 	`var a = 1; var b = 2;` <<>>;
 	`func[var a = 1] x [];` <<>>;
 	`\`\`\`cpp test\`\`\`` <<>>;
+	`if [1] []` <<>>;
 }
