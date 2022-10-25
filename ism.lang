@@ -4,7 +4,7 @@ tokens {
 	float <- digit* `.` digit+;
 	string <- `'` (unicode_any - `'`)* `'`;
 
-	datatypes <= `var` | `bool` | `int` | `float` | `string` | `true` | `false`;
+	datatypes <= `var` | `bool` | `int` | `float` | `string` | `true` | `false` | `list`;
 	kwd <= datatypes | `func` | `if` | `else` | `elif` | `ret` | `mut` | `type` | `raw`;
 
 	ws <= (` ` | `\t` | `\r` | `\f` | `\n`);
@@ -82,9 +82,10 @@ parser {
 	Expr.CPP <- cpp:cpp_block;
 
 	DataType.Literal <- type:(BOOL:`bool` | INT:`int` | FLOAT:`float` | STRING:`string`);
-	DataType.Var <- `var`;
+	DataType.Var <- `var` type:(`[` type:DataType `]`)?;
+	DataType.List <- `list` _ type:DataType;
 
-	Signature.Var[V] <- ismut:`mut`? _ type:DataType _ name:id _ assgt:(`=` _ expr:Expr[pr=*])?;
+	Signature.Var[V] <- ismut:`mut`? _ ~type:DataType _ name:id _ assgt:(`=` _ expr:Expr[pr=*])?;
 	Signature.Func[F] <- ismut:`mut`? _ `func` `[` params:#L[Signature[pr=*]::`,`:?] `]` _ name:id;
 	Signature.RawFunc[F] <- `raw` _ `func` `[` params:#L[Signature[pr=*]::`,`:?] `]` _ name:id;
 
