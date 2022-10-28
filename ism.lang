@@ -4,8 +4,8 @@ tokens {
 	float <- digit* `.` digit+;
 	string <- `'` (unicode_any - `'`)* `'`;
 
-	datatypes <= `var` | `bool` | `int` | `float` | `string` | `true` | `false` | `list`;
-	kwd <= datatypes | `func` | `if` | `else` | `elif` | `ret` | `mut` | `type` | `raw`;
+	//datatypes <= `var` | `bool` | `int` | `float` | `string` | `true` | `false` | `list`;
+	kwd <= `func` | `if` | `else` | `elif` | `ret` | `mut` | `type` | `raw` | `import`;
 
 	ws <= (` ` | `\t` | `\r` | `\f` | `\n`);
 	digit <= `0`..`9`;
@@ -13,11 +13,11 @@ tokens {
 	char1 <= unicode_any - (`'` | ws | langstruc | digit | `\`` | operator | alpha | digit);
 	char2 <= unicode_any - (`'` | ws | langstruc | digit | `\`` | alpha | digit);
 
-	langstruc <= `[` | `]` | `,` | `;` | `.`;
+	langstruc <= `[` | `]` | `,` | `;` | `.` | `:`;
 	operator <= `=`;
 
 	cpp_sep <= `\`\`\``;
-	cpp_block <- cpp_sep `cpp` (unicode_any - `\``)* cpp_sep;
+	cpp_block <- cpp_sep (unicode_any - `\``)* cpp_sep;
 
 	top <= operator | cpp_block | kwd | id | int | float | string | langstruc;
 }
@@ -54,12 +54,17 @@ parser {
 
 	Program <- stmts:Stmt+;
 
-	Stmt.Decl <- x:Decl;
-	Stmt.Expr <- x:Expr `;`;
+	Stmt.Decl <- ~x:Decl;
+	Stmt.Call <- ~x:Expr[F] `;`;
+	Stmt.Assign <- ~x:Expr[A] `;`;
+	Stmt.CPP <- x:Expr[C];
 	Stmt.Null <- `;`;
 	Stmt.Cond <- begin:Cond[B] middle:Cond[M]* end:Cond[E]?;
 	Stmt.Return <- `ret` _ x:Expr? `;`;
-	Stmt.Typedef <- `type` _ name:id `[` members:Decl* `]`;
+	Stmt.Import <- israw:`raw`? _ `import` _ module:Module `;`;
+
+	Module.Local <- `.` module_path:#L[id::`.`];
+	Module.Global <- module_path:#L[id::`.`];
 
 	//Conditional statements
 	Cond.If[B] <- `if` _ `[` expr:Expr[pr=*] `]` _ scope:Scope;
@@ -71,42 +76,24 @@ parser {
 	Literal.Int_ <- val:int;
 	Literal.Float_ <- val:float;
 	Literal.String <- val:#L[string::+_];
-	Literal.Boolean <- val:(TRUE:`true` | FALSE:`false`);
 
-	Expr.FuncCall <- name:id `[` params:#L[Expr[pr=*]::`,`:?] `]`;
+	Expr.FuncCall[F] <- name:id `[` params:#L[Expr[pr=*]::`,`:?] `]`;
 	Expr.Id[I] <- name:id;
 	Expr.Literal <- val:Literal;
-	Expr.Assign[A] <- x:Expr[I] _ `=` _ y:Expr;
+	Expr.Assign[A] <- name:id _ `=` _ y:Expr;
 	Expr.Paren <- `[` elems:#L[Expr[pr=*]::`,`:?] `]`;
 	Expr.BinaryOp <- x:Expr _ op:id _ y:Expr;
-	Expr.CPP <- cpp:cpp_block;
+	Expr.CPP[C] <- cpp:cpp_block;
 
-	DataType.Literal <- type:(BOOL:`bool` | INT:`int` | FLOAT:`float` | STRING:`string`);
-	DataType.Var <- `var` type:(`[` type:DataType `]`)?;
-	DataType.List <- `list` _ type:DataType;
+	DataType.Var <- type:id;
 
-	Signature.Var[V] <- ismut:`mut`? _ ~type:DataType _ name:id _ assgt:(`=` _ expr:Expr[pr=*])?;
-	Signature.Func[F] <- ismut:`mut`? _ `func` `[` params:#L[Signature[pr=*]::`,`:?] `]` _ name:id;
-	Signature.RawFunc[F] <- `raw` _ `func` `[` params:#L[Signature[pr=*]::`,`:?] `]` _ name:id;
+	Decl.Var <- name:id _ `:` _ sig:Signature[V] _ assgt:(`=` _ expr:Expr[pr=*])? `;`;
+	Decl.Func <- name:id _ `:` sig:Signature[F] _ scope:Scope;
 
-	Decl.Var <- type:Signature[V] `;`;
-	Decl.ExprFunc <- type:Signature[F] _ `=` _ expr:Expr[pr=*] `;`;
-	Decl.Func <- type:Signature[F] _ scope:Scope;
-}
+	ParamDecl <- name:id _ `:` sig:Signature;
 
-test {
-	`1 + 1;` <<>>;
-	`func[] x []` <<>>;
-	`foo[x];` <<>>;
-	`foo[1];` <<>>;
-	`[123];` <<>>;
-	`func[] x = [];` <<>>;
-	`func[float a, int b] x []` <<>>;
-	`[a = 1, b = 2];` <<>>;
-	`x = [ test = 1.23 ];` <<>>;
-	`var env = [USER = '', HOSTNAME = ''];` <<>>;
-	`var a = 1; var b = 2;` <<>>;
-	`func[var a = 1] x []` <<>>;
-	`\`\`\`cpp test\`\`\`;` <<>>;
-	`if [1] []` <<>>;
+	Signature.Var[V] <- israw:`raw`? _ ismut:`mut`? _ type:DataType;
+	Signature.Func[F] <- israw:`raw`? _ ismut:`mut`? _ `func` `[` params:#L[ParamDecl::`,`:?] `]` _ return_type:DataType;
+	Signature.Type_[F] <- israw:`raw`? _ ismut:`mut`? _ `type`;
+
 }
