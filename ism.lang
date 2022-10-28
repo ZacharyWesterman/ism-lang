@@ -4,8 +4,7 @@ tokens {
 	float <- digit* `.` digit+;
 	string <- `'` (unicode_any - `'`)* `'`;
 
-	//datatypes <= `var` | `bool` | `int` | `float` | `string` | `true` | `false` | `list`;
-	kwd <= `func` | `if` | `else` | `elif` | `ret` | `mut` | `type` | `raw` | `import`;
+	kwd <= `func` | `if` | `else` | `elif` | `ret` | `mut` | `type` | `raw` | `import` | `final`;
 
 	ws <= (` ` | `\t` | `\r` | `\f` | `\n`);
 	digit <= `0`..`9`;
@@ -13,7 +12,7 @@ tokens {
 	char1 <= unicode_any - (`'` | ws | langstruc | digit | `\`` | operator | alpha | digit);
 	char2 <= unicode_any - (`'` | ws | langstruc | digit | `\`` | alpha | digit);
 
-	langstruc <= `[` | `]` | `,` | `;` | `.` | `:`;
+	langstruc <= `[` | `]` | `,` | `;` | `.` | `:` | `{` | `}`;
 	operator <= `=`;
 
 	cpp_sep <= `\`\`\``;
@@ -46,7 +45,7 @@ parser {
 		Expr.BinaryOp assoc_left;
 		Expr.Assign assoc_left;
 		Expr.Literal Expr.Id Expr.Paren;
-		Expr.FuncCall prefix;
+		Expr.FuncCall postfix;
 		Expr.CPP;
 	}
 
@@ -85,15 +84,17 @@ parser {
 	Expr.BinaryOp <- x:Expr _ op:id _ y:Expr;
 	Expr.CPP[C] <- cpp:cpp_block;
 
-	DataType.Var <- type:id;
+	DataType.Var[V] <- type:#L[id::`.`];
+	DataType.Templated[V] <- type:DataType[V] `{` subtype:DataType `}`;
 
 	Decl.Var <- name:id _ `:` _ sig:Signature[V] _ assgt:(`=` _ expr:Expr[pr=*])? `;`;
 	Decl.Func <- name:id _ `:` sig:Signature[F] _ scope:Scope;
 
 	ParamDecl <- name:id _ `:` sig:Signature;
+	Quals <- isfinal:`final`? _ israw:`raw`? _ ismut:`mut`?;
 
-	Signature.Var[V] <- israw:`raw`? _ ismut:`mut`? _ type:DataType;
-	Signature.Func[F] <- israw:`raw`? _ ismut:`mut`? _ `func` `[` params:#L[ParamDecl::`,`:?] `]` _ return_type:DataType;
-	Signature.Type_[F] <- israw:`raw`? _ ismut:`mut`? _ `type`;
+	Signature.Var[V] <- qualifiers:Quals _ type:DataType;
+	Signature.Func[F] <- qualifiers:Quals _ `func` `[` params:#L[ParamDecl::`,`:?] `]` _ return_type:DataType;
+	Signature.Type_[F] <- qualifiers:Quals _ `type` templ:(`{` params:#L[ParamDecl::`,`:?] `}`)?;
 
 }
