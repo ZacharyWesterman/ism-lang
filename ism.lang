@@ -39,7 +39,7 @@ lexer {
 }
 
 parser {
-	main { Module, Decl, Expr }
+	main { Module, Decl, Block, Stmt, Expr }
 
 	prec {
 		Signature.Subtype assoc_left;
@@ -48,6 +48,7 @@ parser {
 
 		Expr.Assign assoc_right;
 		Expr.Oper;
+		Expr.Dot assoc_left;
 		Expr.Id Expr.Lit.Integer Expr.Lit.Float Expr.Lit.String Expr.Lit.Array Expr.Paren;
 	}
 
@@ -64,7 +65,7 @@ parser {
 	Qualifier.Final <- `final` _;
 
 	Decl.Var <- name:id _ `:` _ quals:Qualifier* type:Signature assign:(_ `=` _ value:Expr)? `;`;
-	Decl.Func <- name:id _ `:` _ quals:Qualifier* `func` `[` params:#L[ParamDecl::`,`:?] `]` return_type:Signature `[` `]`;
+	Decl.Func <- name:id _ `:` _ quals:Qualifier* `func` `[` params:#L[ParamDecl::`,`:?] `]` return_type:Signature _ block:Block;
 	ParamDecl <- name:id _ `:` _ quals:Qualifier* type:Signature assign:(_ `=` _ value:Expr)?;
 
 	KeyPair <= key:(expr:Expr[pr=*] _ `:` _)? value:Expr[pr=*];
@@ -74,10 +75,16 @@ parser {
 	Expr.Lit.Float <- value:float;
 	Expr.Lit.String <- value:string;
 	Expr.Lit.Array <- `[` items:#L[KeyPair::`,`_::] `]`;
-	Expr.Assign <- left:Expr _ `=` _ right:Expr;
-	Expr.Oper <- params:#L[Expr::++eps _];
-	Expr.Paren <- `[` expr:Expr[pr=*] `]`;
+	Expr.Assign[A] <- left:Expr _ `=` _ right:Expr;
+	Expr.Oper[A] <- params:#L[Expr::++eps _];
+	Expr.Paren[A] <- `[` expr:Expr[pr=*] `]`;
+	Expr.Dot[A] <- left:Expr `.` right:Expr;
 
+	Block <- `[` stmts:#B[Stmt::eps] `]`;
+
+	Stmt.Expr <- e:Expr[A] `;`;
+	Stmt.Block <- `.` block:Block;
+	//Stmt.Decl <- decl:Decl;
 }
 
 test {
