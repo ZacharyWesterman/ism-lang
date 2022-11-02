@@ -72,11 +72,13 @@ parser {
 
 	Decl.Var <- name:id _ `:` _ type:Signature assign:(_ `=` _ value:Expr)? `;`;
 
+	KeyPair <= key:(expr:Expr[pr=*] _ `:` _)? value:Expr[pr=*];
+
 	Expr.Id <- name:id;
 	Expr.Lit.Integer <- value:int;
 	Expr.Lit.Float <- value:float;
 	Expr.Lit.String <- value:string;
-	Expr.Lit.Array <- `[` items:#L[Expr[pr=*]::`,`_::] `]`;
+	Expr.Lit.Array <- `[` items:#L[KeyPair::`,`_::] `]`;
 	Expr.Assign <- left:Expr _ `=` _ right:Expr;
 	Expr.Oper <- params:#L[Expr::++eps _];
 	Expr.Paren <- `[` expr:Expr[pr=*] `]`;
@@ -89,4 +91,6 @@ test {
 	`T : x{a}.y{b};` <- Decl;
 	`x : int = y = 3;` <- Decl;
 	`x : bool = [not true] or false;` <- Decl;
+	`['a' = 1, 'b' = 2, ]` <- Expr;
+	`['a' : 1, 'b' : 2, 'c', ]` <- Expr;
 }
