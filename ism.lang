@@ -48,8 +48,18 @@ parser {
 
 		Expr.Assign assoc_right;
 		Expr.Oper;
-		Expr.Call;
-		Expr.Id Expr.Lit.Integer Expr.Lit.Float Expr.Lit.String;
+		Expr.Id Expr.Lit.Integer Expr.Lit.Float Expr.Lit.String Expr.Lit.Array Expr.Paren;
+	}
+
+	attr {
+		match {
+			Expr.Id => lhs[aI],
+		};
+
+		match {
+			Expr.Lit.Array => {},
+			_ => lhs[NLA] -> rhs_begin[NLA],
+		};
 	}
 
 	prop { name_strict; }
@@ -66,9 +76,10 @@ parser {
 	Expr.Lit.Integer <- value:int;
 	Expr.Lit.Float <- value:float;
 	Expr.Lit.String <- value:string;
+	Expr.Lit.Array <- `[` items:#L[Expr[pr=*]::`,`_::] `]`;
 	Expr.Assign <- left:Expr _ `=` _ right:Expr;
-	Expr.Call <- name:id `[` params:#L[Expr[pr=*]::`,`:?] `]`;
-	Expr.Oper <- params:#L[Expr::++eps];
+	Expr.Oper <- params:#L[Expr::++eps _];
+	Expr.Paren <- `[` expr:Expr[pr=*] `]`;
 
 }
 
@@ -77,4 +88,5 @@ test {
 	`T : x.y{a};` <- Decl;
 	`T : x{a}.y{b};` <- Decl;
 	`x : int = y = 3;` <- Decl;
+	`x : bool = [not true] or false;` <- Decl;
 }

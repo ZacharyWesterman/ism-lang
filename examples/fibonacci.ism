@@ -1,4 +1,0 @@
-func[int n] fib [
-	if [n <= 1] [ ret 1; ]
-	else [ ret n + fib[n-1]; ]
-]
