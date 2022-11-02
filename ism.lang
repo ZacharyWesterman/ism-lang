@@ -100,7 +100,7 @@ parser {
 	Stmt.For <- `for` _ key:(name:id `,` _)? value:id _ `of` iter:Expr _ `do` _ block:Block;
 	Stmt.While <- `while` _ cond:Expr _ `do` _ block:Block;
 	Stmt.CPP <- `raw` _ cpp:cpp_block;
-	Stmt.Import <- `import` _ specific:(path:#L[id::+`.`] _ `of` _)? islocal:`.`? path:#L[id::+`.`] `;`;
+	Stmt.Import <- `import` _ specific:(fields:#L[id::+`,`_] `of` _)? islocal:`.`? path:#L[id::+`.`] `;`;
 	Stmt.Break <- `break` level:(_ num:int)? `;`;
 	Stmt.Next <- `next` level:(_ num:int)? `;`;
 }
