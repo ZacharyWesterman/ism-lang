@@ -4,7 +4,7 @@ tokens {
 	float <- digit* `.` digit+;
 	string <- `'` (unicode_any - `'`)* `'`;
 
-	kwd <= `func` | `if` | `then` | `else` | `elif` | `ret` | `mut` | `type` | `raw` | `import` | `final` | `let` | `of`;
+	kwd <= `func` | `if` | `do` | `else` | `elif` | `ret` | `mut` | `type` | `raw` | `import` | `final` | `let` | `of` | `for` | `while`;
 
 	ws <= (` ` | `\t` | `\r` | `\f` | `\n`);
 	digit <= `0`..`9`;
@@ -39,7 +39,7 @@ lexer {
 }
 
 parser {
-	main { Module, Decl, Block, Stmt, Expr }
+	main { TopLevel, Module, Decl, Stmt, Block, Expr }
 
 	prec {
 		Signature.Subtype assoc_left;
@@ -49,10 +49,12 @@ parser {
 		Expr.Assign assoc_right;
 		Expr.Oper;
 		Expr.Dot assoc_left;
-		Expr.Id Expr.Lit.Integer Expr.Lit.Float Expr.Lit.String Expr.Lit.Array Expr.Paren;
+		Expr.Id Expr.Lit.Integer Expr.Lit.Float Expr.Lit.String Expr.Lit.Array Expr.Paren Expr.CPP;
 	}
 
 	prop { name_strict; }
+
+	TopLevel <- stmts:#T2[Stmt::eps];
 
 	Module <- decls:#T2[Decl::eps];
 
@@ -82,18 +84,23 @@ parser {
 	Expr.Oper <- params:#L[Expr::++eps _];
 	Expr.Paren <- `[` expr:Expr[pr=*] `]`;
 	Expr.Dot <- left:Expr `.` right:Expr;
+	Expr.CPP <- cpp:cpp_block;
 
 	Block <- `[` stmts:#B[Stmt::eps] `]`;
 
-	Conditional.If[A] <- `if` _ cond:Expr _ `then` _ block:Block;
-	Conditional.Elif[B] <- `elif` _ cond:Expr _ `then` _ block:Block;
-	Conditional.Else[C] <- `else` _ block:Block;
+	Conditional.If[A] <- `if` _ cond:Expr _ `do` _ block:Block;
+	Conditional.Elif[B] <- `elif` _ cond:Expr _ `do` _ block:Block;
+	Conditional.Else[C] <- `else` opt_do:`do`? _ block:Block;
 
 	Stmt.Expr <- e:Expr `;`;
 	Stmt.Block <- `.` block:Block;
 	Stmt.Decl <- decl:Decl;
 	Stmt.Cond <- first:Conditional[A] _ middle:Conditional[B]* _ last:Conditional[C]?;
 	Stmt.Return <- `ret` values:#L[Expr::_`,`] `;`;
+	Stmt.For <- `for` _ key:(name:id `,` _)? value:id _ `of` iter:Expr _ `do` _ block:Block;
+	Stmt.While <- `while` _ cond:Expr _ `do` _ block:Block;
+	Stmt.CPP <- `raw` _ cpp:cpp_block;
+	Stmt.Import <- `import` _ specific:(path:#L[id::+`.`] _ `of` _)? islocal:`.`? path:#L[id::+`.`] `;`;
 }
 
 test {
