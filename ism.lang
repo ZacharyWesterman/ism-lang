@@ -39,7 +39,7 @@ lexer {
 }
 
 parser {
-	main { Decl, Expr }
+	main { Module, Decl, Expr }
 
 	prec {
 		Signature.Subtype assoc_left;
@@ -48,10 +48,13 @@ parser {
 
 		Expr.Assign assoc_right;
 		Expr.Oper;
+		Expr.Call;
 		Expr.Id Expr.Lit.Integer Expr.Lit.Float Expr.Lit.String;
 	}
 
 	prop { name_strict; }
+
+	Module <- decls:#T2[Decl::eps];
 
 	Signature.Type_ <- name:id;
 	Signature.Template <- type:Signature `{` subtypes:#L[Signature[pr=*]::`,`:?] `}`;
@@ -64,6 +67,7 @@ parser {
 	Expr.Lit.Float <- value:float;
 	Expr.Lit.String <- value:string;
 	Expr.Assign <- left:Expr _ `=` _ right:Expr;
+	Expr.Call <- name:id `[` params:#L[Expr[pr=*]::`,`:?] `]`;
 	Expr.Oper <- params:#L[Expr::++eps];
 
 }
