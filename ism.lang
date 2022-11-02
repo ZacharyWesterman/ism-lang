@@ -4,7 +4,7 @@ tokens {
 	float <- digit* `.` digit+;
 	string <- `'` (unicode_any - `'`)* `'`;
 
-	kwd <= `func` | `if` | `else` | `elif` | `ret` | `mut` | `type` | `raw` | `import` | `final` | `let`;
+	kwd <= `func` | `if` | `then` | `else` | `elif` | `ret` | `mut` | `type` | `raw` | `import` | `final` | `let`;
 
 	ws <= (` ` | `\t` | `\r` | `\f` | `\n`);
 	digit <= `0`..`9`;
@@ -65,7 +65,7 @@ parser {
 	Qualifier.Final <- `final` _;
 
 	Decl.Var <- `let` _ name:id _ `:` _ quals:Qualifier* type:Signature? assign:(_ `=` _ value:Expr)? `;`;
-	Decl.Func <- `let` _ name:id _ `:` _ quals:Qualifier* `func` `[` params:#L[ParamDecl::`,`:?] `]` return_type:Signature? _ block:Block;
+	Decl.Func <- `let` _ name:id _ `:` _ quals:Qualifier* `func` `[` params:#L[ParamDecl::`,`:?] `]` return_types:#L[Signature::_`,`] _ block:Block;
 
 	ParamDecl.Var <- name:id _ `:` _ quals:Qualifier* type:Signature assign:(_ `=` _ value:Expr)?;
 	ParamDecl.Func <- name:id _ `:` _ quals:Qualifier* `func` `[` params:#L[ParamDecl::`,`:?] `]` return_type:Signature;
@@ -84,9 +84,15 @@ parser {
 
 	Block <- `[` stmts:#B[Stmt::eps] `]`;
 
+	Conditional.If[A] <- `if` _ cond:Expr _ `then` _ block:Block;
+	Conditional.Elif[B] <- `elif` _ cond:Expr _ `then` _ block:Block;
+	Conditional.Else[C] <- `else` _ block:Block;
+
 	Stmt.Expr <- e:Expr `;`;
 	Stmt.Block <- `.` block:Block;
 	Stmt.Decl <- decl:Decl;
+	Stmt.Cond <- first:Conditional[A] _ middle:Conditional[B]* _ last:Conditional[C]?;
+	Stmt.Return <- `ret` values:#L[Expr::_`,`] `;`;
 }
 
 test {
