@@ -4,7 +4,7 @@ tokens {
 	float <- digit* `.` digit+;
 	string <- `'` (unicode_any - `'`)* `'`;
 
-	kwd <= `func` | `if` | `do` | `else` | `elif` | `ret` | `mut` | `type` | `raw` | `import` | `final` | `let` | `of` | `for` | `while`;
+	kwd <= `func` | `if` | `do` | `else` | `elif` | `ret` | `mut` | `type` | `raw` | `import` | `final` | `let` | `of` | `for` | `while` | `break` | `next`;
 
 	ws <= (` ` | `\t` | `\r` | `\f` | `\n`);
 	digit <= `0`..`9`;
@@ -101,6 +101,8 @@ parser {
 	Stmt.While <- `while` _ cond:Expr _ `do` _ block:Block;
 	Stmt.CPP <- `raw` _ cpp:cpp_block;
 	Stmt.Import <- `import` _ specific:(path:#L[id::+`.`] _ `of` _)? islocal:`.`? path:#L[id::+`.`] `;`;
+	Stmt.Break <- `break` level:(_ num:int)? `;`;
+	Stmt.Next <- `next` level:(_ num:int)? `;`;
 }
 
 test {
