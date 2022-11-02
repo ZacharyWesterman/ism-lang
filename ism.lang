@@ -4,7 +4,7 @@ tokens {
 	float <- digit* `.` digit+;
 	string <- `'` (unicode_any - `'`)* `'`;
 
-	kwd <= `func` | `if` | `then` | `else` | `elif` | `ret` | `mut` | `type` | `raw` | `import` | `final` | `let`;
+	kwd <= `func` | `if` | `then` | `else` | `elif` | `ret` | `mut` | `type` | `raw` | `import` | `final` | `let` | `of`;
 
 	ws <= (` ` | `\t` | `\r` | `\f` | `\n`);
 	digit <= `0`..`9`;
@@ -66,6 +66,7 @@ parser {
 
 	Decl.Var <- `let` _ name:id _ `:` _ quals:Qualifier* type:Signature? assign:(_ `=` _ value:Expr)? `;`;
 	Decl.Func <- `let` _ name:id _ `:` _ quals:Qualifier* `func` `[` params:#L[ParamDecl::`,`:?] `]` return_types:#L[Signature::_`,`] _ block:Block;
+	Decl.Class <- `let` _ name:id _ `:` _ `type` parent:(_ `of` _ type:Signature)? _ `[` module:Module `]`;
 
 	ParamDecl.Var <- name:id _ `:` _ quals:Qualifier* type:Signature assign:(_ `=` _ value:Expr)?;
 	ParamDecl.Func <- name:id _ `:` _ quals:Qualifier* `func` `[` params:#L[ParamDecl::`,`:?] `]` return_type:Signature;
