@@ -39,12 +39,16 @@ lexer {
 }
 
 parser {
-	main { Decl }
+	main { Decl, Expr }
 
 	prec {
 		Signature.Subtype assoc_left;
 		Signature.Template;
 		Signature.Type_;
+
+		Expr.Assign assoc_right;
+		Expr.Oper;
+		Expr.Id Expr.Lit.Integer Expr.Lit.Float Expr.Lit.String;
 	}
 
 	prop { name_strict; }
@@ -53,7 +57,14 @@ parser {
 	Signature.Template <- type:Signature `{` subtypes:#L[Signature[pr=*]::`,`:?] `}`;
 	Signature.Subtype <- object:Signature `.` type:Signature;
 
-	Decl.Var <- name:id _ `:` _ type:Signature `;`;
+	Decl.Var <- name:id _ `:` _ type:Signature assign:(_ `=` _ value:Expr)? `;`;
+
+	Expr.Id <- name:id;
+	Expr.Lit.Integer <- value:int;
+	Expr.Lit.Float <- value:float;
+	Expr.Lit.String <- value:string;
+	Expr.Assign <- left:Expr _ `=` _ right:Expr;
+	Expr.Oper <- params:#L[Expr::++eps];
 
 }
 
@@ -61,4 +72,5 @@ test {
 	`T : x{a}.y;` <- Decl;
 	`T : x.y{a};` <- Decl;
 	`T : x{a}.y{b};` <- Decl;
+	`x : int = y = 3;` <- Decl;
 }
