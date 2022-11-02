@@ -51,17 +51,6 @@ parser {
 		Expr.Id Expr.Lit.Integer Expr.Lit.Float Expr.Lit.String Expr.Lit.Array Expr.Paren;
 	}
 
-	attr {
-		match {
-			Expr.Id => lhs[aI],
-		};
-
-		match {
-			Expr.Lit.Array => {},
-			_ => lhs[NLA] -> rhs_begin[NLA],
-		};
-	}
-
 	prop { name_strict; }
 
 	Module <- decls:#T2[Decl::eps];
@@ -70,7 +59,13 @@ parser {
 	Signature.Template <- type:Signature `{` subtypes:#L[Signature[pr=*]::`,`:?] `}`;
 	Signature.Subtype <- object:Signature `.` type:Signature;
 
-	Decl.Var <- name:id _ `:` _ type:Signature assign:(_ `=` _ value:Expr)? `;`;
+	Qualifier.Mut <- `mut` _;
+	Qualifier.Raw <- `raw` _;
+	Qualifier.Final <- `final` _;
+
+	Decl.Var <- name:id _ `:` _ quals:Qualifier* type:Signature assign:(_ `=` _ value:Expr)? `;`;
+	Decl.Func <- name:id _ `:` _ quals:Qualifier* `func` `[` params:#L[ParamDecl::`,`:?] `]` return_type:Signature `[` `]`;
+	ParamDecl <- name:id _ `:` _ quals:Qualifier* type:Signature assign:(_ `=` _ value:Expr)?;
 
 	KeyPair <= key:(expr:Expr[pr=*] _ `:` _)? value:Expr[pr=*];
 
