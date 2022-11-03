@@ -4,7 +4,7 @@ tokens {
 	float <- digit* `.` digit+;
 	string <- `'` (unicode_any - `'`)* `'`;
 
-	kwd <= `func` | `if` | `do` | `else` | `elif` | `ret` | `mut` | `type` | `raw` | `import` | `final` | `let` | `of` | `for` | `while` | `break` | `next`;
+	kwd <= `func` | `if` | `do` | `else` | `elif` | `ret` | `mut` | `type` | `raw` | `import` | `final` | `let` | `of` | `for` | `while` | `break` | `next` | `unary` | `binary`;
 
 	ws <= (` ` | `\t` | `\r` | `\f` | `\n`);
 	digit <= `0`..`9`;
@@ -49,7 +49,7 @@ parser {
 		Expr.Assign assoc_right;
 		Expr.Oper;
 		Expr.Dot assoc_left;
-		Expr.Id Expr.Lit.Integer Expr.Lit.Float Expr.Lit.String Expr.Lit.Array Expr.Paren Expr.CPP;
+		Expr.Id Expr.Literal Expr.Lit.Array Expr.Paren Expr.CPP;
 	}
 
 	prop { name_strict; }
@@ -65,20 +65,29 @@ parser {
 	Qualifier.Mut <- `mut` _;
 	Qualifier.Raw <- `raw` _;
 	Qualifier.Final <- `final` _;
+	Qualifier.Unary <- `unary` _ precedence:Literal;
+	Qualifier.Binary <- `binary` _ precedence:Literal;
 
-	Decl.Var <- `let` _ name:id _ `:` _ quals:Qualifier* type:Signature? assign:(_ `=` _ value:Expr)? `;`;
+	Decl.Var1 <- `let` _ name:id _ `:` _ quals:Qualifier* type:Signature `;`;
+	Decl.Var2 <- `let` _ name:id _ `:` _ quals:Qualifier* type:Signature? _ `=` _ value:Expr `;`;
 	Decl.Func <- `let` _ name:id _ `:` _ quals:Qualifier* `func` `[` params:#L[ParamDecl::`,`:?] `]` return_types:#L[Signature::_`,`] _ block:Block;
 	Decl.Class <- `let` _ name:id _ `:` _ `type` parent:(_ `of` _ type:Signature)? _ `[` module:Module `]`;
+	Decl.TemplClass <- `let` _ name:id `{` templ:#L[TemplDecl::+`,`:?] `}` _ `:` _ `type` parent:(_ `of` _ type:Signature)? _ `[` module:Module `]`;
 
 	ParamDecl.Var <- name:id _ `:` _ quals:Qualifier* type:Signature assign:(_ `=` _ value:Expr)?;
 	ParamDecl.Func <- name:id _ `:` _ quals:Qualifier* `func` `[` params:#L[ParamDecl::`,`:?] `]` return_type:Signature;
 
+	TemplDecl.Class <- name:id _ `:` _ `type`;
+	TemplDecl.Other <- name:id _ `:` _ type:Signature;
+
 	KeyPair <= key:(expr:Expr[pr=*] _ `:` _)? value:Expr[pr=*];
 
+	Literal.Integer <- value:int;
+	Literal.Float <- value:float;
+	Literal.String <- value:string;
+
 	Expr.Id <- name:id;
-	Expr.Lit.Integer <- value:int;
-	Expr.Lit.Float <- value:float;
-	Expr.Lit.String <- value:string;
+	Expr.Literal <- value:Literal;
 	Expr.Lit.Array <- `[` items:#L[KeyPair::`,`_::] `]`;
 	Expr.Assign <- left:Expr _ `=` _ right:Expr;
 	Expr.Oper <- params:#L[Expr::++eps _];
