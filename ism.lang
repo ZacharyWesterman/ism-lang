@@ -48,8 +48,9 @@ parser {
 	main { TopLevel, Expr }
 
 	prec {
-		Expr.Group;
 		Expr.Ternary assoc_right;
+		Expr.Assign assoc_right;
+		Expr.Group;
 		Expr.In assoc_left;
 		Expr.ListCompKey Expr.ListCompNoKey assoc_right;
 		Expr.Lambda Expr.Function;
@@ -70,9 +71,9 @@ parser {
 
 	TypeDecl.None <- `null`;
 	TypeDecl.Single <- name:id subtypes:(`[` types:#L[TypeDecl::`,` _ :?] `]`)?;
-	TypeDecl.Function <- qual:(qual:FuncQual _)? `(` params:#L[TypeDecl::`,`:?] `)` returns:(`:` _ decl:TypeDecl)?;
+	TypeDecl.Function <- qual:(qual:FuncQual _)? f:`fn`? `(` params:#L[TypeDecl::`,`:?] `)` returns:(`:` _ decl:TypeDecl)?;
 
-	FuncParam <- name:id type:(`:` _ decl:TypeDecl)?;
+	FuncParam <- name:id type:(`:` _ decl:TypeDecl)? defaultval:(_ `=` _ expr:Expr)?;
 	FuncSignature <- qual:(qual:FuncQual _)? `fn` `(` params:#L[FuncParam::`,`_:?] `)` returns:(`:` _ decls:#L[TypeDecl::+`,`_])?;
 	FuncQual <- Infix:`infix` | Postfix:`postfix` | Prefix:`prefix`;
 
@@ -88,6 +89,7 @@ parser {
 	Expr.ListCompKey <- item:Expr _ `for` _ key:id `,` _ value:id _ `in` _ list:Expr condition:(_ `with` _ expr:Expr)?;
 	Expr.Lambda <- signature:FuncSignature _ `=>` _ expr:Expr;
 	Expr.Function <- signature:FuncSignature _ e:#L[`\n`::eps] `{` `}`;
+	Expr.Assign <- lexpr:Expr _ `=` _ rexpr:Expr;
 }
 
 test {
@@ -102,4 +104,6 @@ test {
 	`i for i in list with x < 4` <- Expr;
 	`key + ':' + value for key, value in {a: b, c: d}` <- Expr;
 	`fn(this, text: str) => text + '!'` <- Expr;
+	`print true if a < 3 else false` <- Expr;
+	`a = b if d = true else [c,d]` <- Expr;
 }
