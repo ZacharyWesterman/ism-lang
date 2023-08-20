@@ -1,18 +1,23 @@
 tokens {
-	id <- (alpha (alpha | digit)* - kwd) | (char1 char2 - `//`) char2* | char1;
+	id <- (alpha (alpha | digit)* - kwd) | (char1 char1 - `//`) char1* | char1;
 	int <- digit+;
 	float <- digit* `.` digit+;
 	string <- `'` (unicode_any - `'`)* `'`;
 
-	kwd <= `func` | `if` | `do` | `else` | `elif` | `return` | `mut` | `type` | `import` | `final` | `let` | `of` | `in` | `for` | `while` | `break` | `next` | `prefix` | `postfix` | `infix`;
+	kwd <=
+		  `if`     | `else`   | `elif`   | `do`       | `for`   | `while`
+		| `let`    | `mut`    | `prefix` | `postfix`  | `infix` | `type`
+		| `return` | `import` | `final`  | `continue` | `break` | `volatile`
+		| `yield`  | `async`  | `await`  | `thread`   | `of`    | `inherit`
+		| `use`    | `try`    | `catch`  | `finally`  | `throw` | `override`
+		| `in`     | `true`   | `false`  | `null`     | `as`    | `with`;
 
 	ws <= (` ` | `\t` | `\r` | `\f`);
 	digit <= `0`..`9`;
 	alpha <= `a`..`z` | `A`..`Z` | `_`;
 	char1 <= unicode_any - (`'` | ws | langstruc | digit | `\`` | operator | alpha | digit | endline);
-	char2 <= unicode_any - (`'` | ws | langstruc | digit | `\`` | alpha | digit | endline);
 
-	langstruc <= `[` | `]` | `,` | `.` | `:` | `{` | `}` | `(` | `)`;
+	langstruc <= `[` | `]` | `,` | `.` | `:` | `{` | `}` | `(` | `)` | `=>` | `|` | `...` | `@`;
 	operator <= `=`;
 	endline <= `\n` | `;`;
 
@@ -55,6 +60,7 @@ parser {
 	Literal.Float <- value:float;
 	Literal.String <- value:string;
 	Literal.C <- code:c_block;
+	Literal.Boolean <- True:`true` | False:`false`;
 
 	KeyPair <- key:Expr `:` _ value:Expr;
 
