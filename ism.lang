@@ -11,7 +11,7 @@ tokens {
 		| `yield`  | `async`  | `await`  | `thread`   | `of`    | `inherit`
 		| `use`    | `try`    | `catch`  | `finally`  | `throw` | `override`
 		| `in`     | `true`   | `false`  | `null`     | `as`    | `with`
-		| `trait`;
+		| `trait`  | `fn`;
 
 	ws <= (` ` | `\t` | `\r` | `\f`);
 	digit <= `0`..`9`;
@@ -50,6 +50,9 @@ parser {
 	prec {
 		Expr.Group;
 		Expr.Ternary assoc_right;
+		Expr.In assoc_left;
+		Expr.ListCompKey Expr.ListCompNoKey assoc_right;
+		Expr.Lambda Expr.Function;
 		Expr.Id Expr.Literal Expr.Paren Expr.Array Expr.Dict;
 	}
 
@@ -65,6 +68,11 @@ parser {
 
 	KeyPair <- key:Expr `:` _ value:Expr;
 
+	TypeDecl.Single <- name:id subtypes:(`[` types:#L[TypeDecl::`,` _ :?] `]`)?;
+	TypeDecl.Function <- `(` params:#L[TypeDecl::`,`:?] `)` returns:(`:` _ decl:TypeDecl)?;
+	FuncParam <- name:id type:(`:` _ decl:TypeDecl)?;
+	FuncSignature <- `fn` `(` params:#L[FuncParam::`,`_:?] `)` returns:(`:` _ decl:TypeDecl)?;
+
 	Expr.Group <- items:#L[Expr::++ _];
 	Expr.Id <- name:id;
 	Expr.Literal <- value:Literal;
@@ -72,6 +80,11 @@ parser {
 	Expr.Paren <- `(` items:#L[Expr[pr=*]::+`,`:?] `)`;
 	Expr.Array <- `[` items:#L[Expr[pr=*]::+`,`:?] `]`;
 	Expr.Dict <- `{` items:#L[KeyPair::`,`_:?] `}`;
+	Expr.In <- item:Expr _ `in` _ list:Expr;
+	Expr.ListCompNoKey <- item:Expr _ `for` _ value:id _ `in` _ list:Expr condition:(_ `with` _ expr:Expr)?;
+	Expr.ListCompKey <- item:Expr _ `for` _ key:id `,` _ value:id _ `in` _ list:Expr condition:(_ `with` _ expr:Expr)?;
+	Expr.Lambda <- signature:FuncSignature _ `=>` _ expr:Expr;
+	Expr.Function <- signature:FuncSignature _ e:#L[`\n`::eps] `{` `}`;
 }
 
 test {
@@ -81,4 +94,9 @@ test {
 	`{a: (1), b: 3}` <- Expr;
 	`[1,2,3]` <- Expr;
 	`(1,2,3)` <- Expr;
+	`true or false` <- Expr;
+	`true if item in list else false` <- Expr;
+	`i for i in list with x < 4` <- Expr;
+	`key + ':' + value for key, value in {a: b, c: d}` <- Expr;
+	`fn(this, text: str) => text + '!'` <- Expr;
 }
