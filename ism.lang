@@ -64,14 +64,17 @@ parser {
 	Literal.Float <- value:float;
 	Literal.String <- value:string;
 	Literal.C <- code:c_block;
-	Literal.Boolean <- True:`true` | False:`false`;
+	Literal.Special <- True:`true` | False:`false` | Null:`null`;
 
 	KeyPair <- key:Expr `:` _ value:Expr;
 
+	TypeDecl.None <- `null`;
 	TypeDecl.Single <- name:id subtypes:(`[` types:#L[TypeDecl::`,` _ :?] `]`)?;
-	TypeDecl.Function <- `(` params:#L[TypeDecl::`,`:?] `)` returns:(`:` _ decl:TypeDecl)?;
+	TypeDecl.Function <- qual:(qual:FuncQual _)? `(` params:#L[TypeDecl::`,`:?] `)` returns:(`:` _ decl:TypeDecl)?;
+
 	FuncParam <- name:id type:(`:` _ decl:TypeDecl)?;
-	FuncSignature <- `fn` `(` params:#L[FuncParam::`,`_:?] `)` returns:(`:` _ decl:TypeDecl)?;
+	FuncSignature <- qual:(qual:FuncQual _)? `fn` `(` params:#L[FuncParam::`,`_:?] `)` returns:(`:` _ decls:#L[TypeDecl::+`,`_])?;
+	FuncQual <- Infix:`infix` | Postfix:`postfix` | Prefix:`prefix`;
 
 	Expr.Group <- items:#L[Expr::++ _];
 	Expr.Id <- name:id;
