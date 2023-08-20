@@ -1,2 +1,2 @@
 # ism-lang
-ISM: a language where capitalization matters.
+ISM: a toy language for testing out fun syntax
