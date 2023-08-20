@@ -10,7 +10,8 @@ tokens {
 		| `return` | `import` | `final`  | `continue` | `break` | `volatile`
 		| `yield`  | `async`  | `await`  | `thread`   | `of`    | `inherit`
 		| `use`    | `try`    | `catch`  | `finally`  | `throw` | `override`
-		| `in`     | `true`   | `false`  | `null`     | `as`    | `with`;
+		| `in`     | `true`   | `false`  | `null`     | `as`    | `with`
+		| `trait`;
 
 	ws <= (` ` | `\t` | `\r` | `\f`);
 	digit <= `0`..`9`;
