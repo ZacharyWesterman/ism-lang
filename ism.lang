@@ -16,10 +16,9 @@ tokens {
 	operator <= `=`;
 	endline <= `\n` | `;`;
 
-	cpp_sep <= `\`\`\``;
-	cpp_block <- cpp_sep (unicode_any - `\``)* cpp_sep;
+	c_block <- `\`\`\`` (unicode_any)* `\`\`\``;
 
-	top <= operator | cpp_block | kwd | id | int | float | string | langstruc | endline;
+	top <= operator | c_block | kwd | id | int | float | string | langstruc | endline;
 }
 
 lexer {
@@ -55,6 +54,7 @@ parser {
 	Literal.Integer <- value:int;
 	Literal.Float <- value:float;
 	Literal.String <- value:string;
+	Literal.C <- code:c_block;
 
 	KeyPair <- key:Expr `:` _ value:Expr;
 
