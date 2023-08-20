@@ -45,7 +45,7 @@ parser {
 	prec {
 		Expr.Group;
 		Expr.Ternary assoc_right;
-		Expr.Id Expr.Literal;
+		Expr.Id Expr.Literal Expr.Paren Expr.Array Expr.Dict;
 	}
 
 	prop { name_strict; }
@@ -56,13 +56,22 @@ parser {
 	Literal.Float <- value:float;
 	Literal.String <- value:string;
 
+	KeyPair <- key:Expr `:` _ value:Expr;
+
 	Expr.Group <- items:#L[Expr::++ _];
 	Expr.Id <- name:id;
 	Expr.Literal <- value:Literal;
 	Expr.Ternary <- true_expr:Expr _ `if` _ condition:Expr _ `else` _ false_expr:Expr;
+	Expr.Paren <- `(` items:#L[Expr[pr=*]::+`,`:?] `)`;
+	Expr.Array <- `[` items:#L[Expr[pr=*]::+`,`:?] `]`;
+	Expr.Dict <- `{` items:#L[KeyPair::`,`_:?] `}`;
 }
 
 test {
 	`a + 3` <- Expr;
 	`1 if 3 else 0` <- Expr;
+	`{}` <- Expr;
+	`{a: (1), b: 3}` <- Expr;
+	`[1,2,3]` <- Expr;
+	`(1,2,3)` <- Expr;
 }
