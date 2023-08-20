@@ -4,21 +4,22 @@ tokens {
 	float <- digit* `.` digit+;
 	string <- `'` (unicode_any - `'`)* `'`;
 
-	kwd <= `func` | `if` | `do` | `else` | `elif` | `ret` | `mut` | `type` | `raw` | `import` | `final` | `let` | `of` | `for` | `while` | `break` | `next` | `unary` | `binary`;
+	kwd <= `func` | `if` | `do` | `else` | `elif` | `return` | `mut` | `type` | `import` | `final` | `let` | `of` | `in` | `for` | `while` | `break` | `next` | `prefix` | `postfix` | `infix`;
 
-	ws <= (` ` | `\t` | `\r` | `\f` | `\n`);
+	ws <= (` ` | `\t` | `\r` | `\f`);
 	digit <= `0`..`9`;
 	alpha <= `a`..`z` | `A`..`Z` | `_`;
-	char1 <= unicode_any - (`'` | ws | langstruc | digit | `\`` | operator | alpha | digit);
-	char2 <= unicode_any - (`'` | ws | langstruc | digit | `\`` | alpha | digit);
+	char1 <= unicode_any - (`'` | ws | langstruc | digit | `\`` | operator | alpha | digit | endline);
+	char2 <= unicode_any - (`'` | ws | langstruc | digit | `\`` | alpha | digit | endline);
 
-	langstruc <= `[` | `]` | `,` | `;` | `.` | `:` | `{` | `}`;
+	langstruc <= `[` | `]` | `,` | `.` | `:` | `{` | `}` | `(` | `)`;
 	operator <= `=`;
+	endline <= `\n` | `;`;
 
 	cpp_sep <= `\`\`\``;
 	cpp_block <- cpp_sep (unicode_any - `\``)* cpp_sep;
 
-	top <= operator | cpp_block | kwd | id | int | float | string | langstruc;
+	top <= operator | cpp_block | kwd | id | int | float | string | langstruc | endline;
 }
 
 lexer {
@@ -39,87 +40,29 @@ lexer {
 }
 
 parser {
-	main { TopLevel, Module, Decl, Stmt, Block, Expr }
+	main { TopLevel, Expr }
 
 	prec {
-		Signature.Subtype assoc_left;
-		Signature.Template;
-		Signature.Type_;
-
-		Expr.Assign assoc_right;
-		Expr.Oper;
-		Expr.Dot assoc_left;
-		Expr.Id Expr.Literal Expr.Lit.Array Expr.Paren Expr.CPP;
+		Expr.Group;
+		Expr.Ternary assoc_right;
+		Expr.Id Expr.Literal;
 	}
 
 	prop { name_strict; }
 
-	TopLevel <- stmts:#T2[Stmt::eps];
-
-	Module <- decls:#T2[Decl::eps];
-
-	Signature.Type_ <- name:id;
-	Signature.Template <- type:Signature `{` subtypes:#L[Signature[pr=*]::`,`:?] `}`;
-	Signature.Subtype <- object:Signature `.` type:Signature;
-
-	Qualifier.Mut <- `mut` _;
-	Qualifier.Raw <- `raw` _;
-	Qualifier.Final <- `final` _;
-	Qualifier.Unary <- `unary` _ precedence:Literal;
-	Qualifier.Binary <- `binary` _ precedence:Literal;
-
-	Decl.Var1 <- `let` _ name:id _ `:` _ quals:Qualifier* type:Signature `;`;
-	Decl.Var2 <- `let` _ name:id _ `:` _ quals:Qualifier* type:Signature? _ `=` _ value:Expr `;`;
-	Decl.Func <- `let` _ name:id _ `:` _ quals:Qualifier* `func` `[` params:#L[ParamDecl::`,`:?] `]` return_types:#L[Signature::_`,`] _ block:Block;
-	Decl.Class <- `let` _ name:id _ `:` _ `type` parent:(_ `of` _ type:Signature)? _ `[` module:Module `]`;
-	Decl.TemplClass <- `let` _ name:id `{` templ:#L[TemplDecl::+`,`:?] `}` _ `:` _ `type` parent:(_ `of` _ type:Signature)? _ `[` module:Module `]`;
-
-	ParamDecl.Var <- name:id _ `:` _ quals:Qualifier* type:Signature assign:(_ `=` _ value:Expr)?;
-	ParamDecl.Func <- name:id _ `:` _ quals:Qualifier* `func` `[` params:#L[ParamDecl::`,`:?] `]` return_type:Signature;
-
-	TemplDecl.Class <- name:id _ `:` _ `type`;
-	TemplDecl.Other <- name:id _ `:` _ type:Signature;
-
-	KeyPair <= key:(expr:Expr[pr=*] _ `:` _)? value:Expr[pr=*];
+	TopLevel <- expr:Expr;
 
 	Literal.Integer <- value:int;
 	Literal.Float <- value:float;
 	Literal.String <- value:string;
 
+	Expr.Group <- items:#L[Expr::++ _];
 	Expr.Id <- name:id;
 	Expr.Literal <- value:Literal;
-	Expr.Lit.Array <- `[` items:#L[KeyPair::`,`_::] `]`;
-	Expr.Assign <- left:Expr _ `=` _ right:Expr;
-	Expr.Oper <- params:#L[Expr::++eps _];
-	Expr.Paren <- `[` expr:Expr[pr=*] `]`;
-	Expr.Dot <- left:Expr `.` right:Expr;
-	Expr.CPP <- cpp:cpp_block;
-
-	Block <- `[` stmts:#B[Stmt::eps] `]`;
-
-	Conditional.If[A] <- `if` _ cond:Expr _ `do` _ block:Block;
-	Conditional.Elif[B] <- `elif` _ cond:Expr _ `do` _ block:Block;
-	Conditional.Else[C] <- `else` opt_do:`do`? _ block:Block;
-
-	Stmt.Expr <- e:Expr `;`;
-	Stmt.Block <- `.` block:Block;
-	Stmt.Decl <- decl:Decl;
-	Stmt.Cond <- first:Conditional[A] _ middle:Conditional[B]* _ last:Conditional[C]?;
-	Stmt.Return <- `ret` values:#L[Expr::_`,`] `;`;
-	Stmt.For <- `for` _ key:(name:id `,` _)? value:id _ `of` iter:Expr _ `do` _ block:Block;
-	Stmt.While <- `while` _ cond:Expr _ `do` _ block:Block;
-	Stmt.CPP <- `raw` _ cpp:cpp_block;
-	Stmt.Import <- `import` _ specific:(fields:#L[id::+`,`_] `of` _)? islocal:`.`? path:#L[id::+`.`] `;`;
-	Stmt.Break <- `break` level:(_ num:int)? `;`;
-	Stmt.Next <- `next` level:(_ num:int)? `;`;
+	Expr.Ternary <- true_expr:Expr _ `if` _ condition:Expr _ `else` _ false_expr:Expr;
 }
 
 test {
-	`let T : x{a}.y;` <- Decl;
-	`let T : x.y{a};` <- Decl;
-	`let T : x{a}.y{b};` <- Decl;
-	`let x : int = y = 3;` <- Decl;
-	`let x :  = [not true] or false;` <- Decl;
-	`['a' = 1, 'b' = 2, ]` <- Expr;
-	`['a' : 1, 'b' : 2, 'c', ]` <- Expr;
+	`a + 3` <- Expr;
+	`1 if 3 else 0` <- Expr;
 }
