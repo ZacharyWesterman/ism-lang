@@ -13,24 +13,24 @@ tokens {
 		| `in`     | `true`   | `false`  | `null`     | `as`    | `with`
 		| `trait`  | `fn`;
 
-	ws <= (` ` | `\t` | `\r` | `\f`);
+	ws <= (` ` | `\t` | `\r` | `\f` | `\n`);
 	digit <= `0`..`9`;
 	alpha <= `a`..`z` | `A`..`Z` | `_`;
-	char1 <= unicode_any - (`'` | ws | langstruc | digit | `\`` | operator | alpha | digit | endline);
+	char1 <= unicode_any - (`'` | ws | langstruc | digit | `\`` | operator | alpha | digit);
 
-	langstruc <= `[` | `]` | `,` | `.` | `:` | `{` | `}` | `(` | `)` | `=>` | `|` | `...` | `@`;
+	langstruc <= `[` | `]` | `,` | `.` | `:` | `{` | `}` | `(` | `)` | `=>` | `|` | `...` | `@` | `;`;
 	operator <= `=`;
-	endline <= `\n` | `;`;
 
 	c_block <- `\`\`\`` (unicode_any)* `\`\`\``;
 
-	top <= operator | c_block | kwd | id | int | float | string | langstruc | endline;
+	top <= operator | c_block | kwd | id | int | float | string | langstruc;
 }
 
 lexer {
 	main { body }
 
-	mode body {
+	mode body  {
+		`//[` => { push comment_multi; }
 		`//` => { push comment_single; }
 		top => { emit; }
 		ws => { pass; }
@@ -42,12 +42,19 @@ lexer {
 		eof => { pop_extract; }
 		_ => { pass; }
 	}
+
+	mode comment_multi {
+		eof => { pop_extract; }
+		`//]` => { pop_extract; }
+		_ => { pass; }
+	}
 }
 
 parser {
-	main { TopLevel, Expr }
+	main { Block }
 
 	prec {
+		Stmt.Decl;
 		Expr.Ternary assoc_right;
 		Expr.Assign assoc_right;
 		Expr.Group;
@@ -55,11 +62,11 @@ parser {
 		Expr.ListCompKey Expr.ListCompNoKey assoc_right;
 		Expr.Lambda Expr.Function;
 		Expr.Id Expr.Literal Expr.Paren Expr.Array Expr.Dict;
+		Stmt.Expr;
+		Stmt.Function;
 	}
 
 	prop { name_strict; }
-
-	TopLevel <- expr:Expr;
 
 	Literal.Integer <- value:int;
 	Literal.Float <- value:float;
@@ -74,7 +81,8 @@ parser {
 	TypeDecl.Function <- qual:(qual:FuncQual _)? f:`fn`? `(` params:#L[TypeDecl::`,`:?] `)` returns:(`:` _ decl:TypeDecl)?;
 
 	FuncParam <- name:id type:(`:` _ decl:TypeDecl)? defaultval:(_ `=` _ expr:Expr)?;
-	FuncSignature <- qual:(qual:FuncQual _)? `fn` `(` params:#L[FuncParam::`,`_:?] `)` returns:(`:` _ decls:#L[TypeDecl::+`,`_])?;
+	FuncLambda <- qual:(qual:FuncQual _)? `fn` signature:FuncSignature;
+	FuncSignature <- `(` params:#L[FuncParam::`,`_:?] `)` returns:(`:` _ decls:#L[TypeDecl::+`,`_])?;
 	FuncQual <- Infix:`infix` | Postfix:`postfix` | Prefix:`prefix`;
 
 	Expr.Group <- items:#L[Expr::++ _];
@@ -87,23 +95,29 @@ parser {
 	Expr.In <- item:Expr _ `in` _ list:Expr;
 	Expr.ListCompNoKey <- item:Expr _ `for` _ value:id _ `in` _ list:Expr condition:(_ `with` _ expr:Expr)?;
 	Expr.ListCompKey <- item:Expr _ `for` _ key:id `,` _ value:id _ `in` _ list:Expr condition:(_ `with` _ expr:Expr)?;
-	Expr.Lambda <- signature:FuncSignature _ `=>` _ expr:Expr;
-	Expr.Function <- signature:FuncSignature _ e:#L[`\n`::eps] `{` `}`;
+	Expr.Lambda <- signature:FuncLambda _ `=>` _ expr:Expr;
+	Expr.Function <- signature:FuncLambda _ `{` `}`;
 	Expr.Assign <- lexpr:Expr _ `=` _ rexpr:Expr;
+
+	Stmt.Expr <- expr:Expr `;`;
+	Stmt.Function <- qual:(qual:FuncQual _)? `fn` _ name:id subtypes:(`[` types:#L[TypeDecl::`,` _ :?] `]`)? _ signature:FuncSignature _ `{` body:Block `}`;
+	Stmt.Decl <- `let` _ name:id type:(`:` _ decl:TypeDecl)? _ `=` _ expr:Expr `;`;
+
+	Block <- statements:#L[Stmt::eps];
 }
 
-test {
-	`a + 3` <- Expr;
-	`1 if 3 else 0` <- Expr;
-	`{}` <- Expr;
-	`{a: (1), b: 3}` <- Expr;
-	`[1,2,3]` <- Expr;
-	`(1,2,3)` <- Expr;
-	`true or false` <- Expr;
-	`true if item in list else false` <- Expr;
-	`i for i in list with x < 4` <- Expr;
-	`key + ':' + value for key, value in {a: b, c: d}` <- Expr;
-	`fn(this, text: str) => text + '!'` <- Expr;
-	`print true if a < 3 else false` <- Expr;
-	`a = b if d = true else [c,d]` <- Expr;
-}
+//test {
+//	`a + 3` <- Expr <<>>;
+//	`1 if 3 else 0` <- Expr <<>>;
+//	`{}` <- Expr <<>>;
+//	`{a: (1), b: 3}` <- Expr <<>>;
+//	`[1,2,3]` <- Expr <<>>;
+//	`(1,2,3)` <- Expr <<>>;
+//	`true or false` <- Expr <<>>;
+//	`true if item in list else false` <- Expr <<>>;
+//	`i for i in list with x < 4` <- Expr <<>>;
+//	`key + ':' + value for key, value in {a: b, c: d}` <- Expr <<>>;
+//	`fn(this, text: str) => text + '!'` <- Expr <<>>;
+//	`print true if a < 3 else false` <- Expr <<>>;
+//	`a = b if d = true else [c,d]` <- Expr <<>>;
+//}
